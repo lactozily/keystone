@@ -1,9 +1,8 @@
 import _ from 'lodash';
 import React from 'react';
-import ReactDOM from 'react-dom';
 import Field from '../Field';
 import { Button, FormField, FormInput, FormNote } from 'elemental';
-import Lightbox from '../../../admin/client/components/Lightbox';
+import Lightbox from '../../components/Lightbox';
 import classnames from 'classnames';
 
 const SUPPORTED_TYPES = ['image/gif', 'image/png', 'image/jpeg', 'image/bmp', 'image/x-icon', 'application/pdf', 'image/x-tiff', 'image/x-tiff', 'application/postscript', 'image/vnd.adobe.photoshop', 'image/svg+xml'];
@@ -34,6 +33,21 @@ var Thumbnail = React.createClass({
 		width: React.PropTypes.number,
 	},
 
+	applyTransforms (url) {
+		var format = this.props.format;
+
+		if (format === 'pdf') {
+			// support cloudinary pdf previews in jpg format
+			url = url.substr(0, url.lastIndexOf('.')) + '.jpg';
+			url = url.replace(/image\/upload/, 'image/upload/c_thumb,h_90,w_90');
+		} else {
+			// add cloudinary thumbnail parameters to the url
+			url = url.replace(/image\/upload/, 'image/upload/c_thumb,g_face,h_90,w_90');
+		}
+
+		return url;
+	},
+
 	renderActionButton () {
 		if (!this.props.shouldRenderActionButton || this.props.isQueued) return null;
 		return <Button type={this.props.deleted ? 'link-text' : 'link-cancel'} block onClick={this.props.toggleDelete}>{this.props.deleted ? 'Undo' : 'Remove'}</Button>;
@@ -41,7 +55,7 @@ var Thumbnail = React.createClass({
 
 	render () {
 		let iconClassName;
-		const { deleted, height, isQueued, url, width, openLightbox } = this.props;
+		const { deleted, height, isQueued, url, width, openLightbox, format } = this.props;
 		const previewClassName = classnames('image-preview', {
 			action: (deleted || isQueued),
 		});
@@ -53,11 +67,14 @@ var Thumbnail = React.createClass({
 			iconClassName = classnames(iconClassQueued);
 		}
 
+		const shouldOpenLightbox = (format !== 'pdf');
+		let thumbUrl = this.applyTransforms(url);
+
 		return (
 			<div className="image-field image-sortable" title={title}>
 				<div className={previewClassName}>
-					<a href={url} onClick={openLightbox} className="img-thumbnail">
-						<img style={{ height: '90' }} className="img-load" src={url} />
+					<a href={url} onClick={shouldOpenLightbox ? openLightbox : null} className="img-thumbnail" target="_blank">
+						<img style={{ height: '90' }} className="img-load" src={thumbUrl} />
 						<span className={iconClassName} />
 					</a>
 				</div>
@@ -69,6 +86,10 @@ var Thumbnail = React.createClass({
 });
 
 module.exports = Field.create({
+	displayName: 'CloudinaryImagesField',
+	statics: {
+		type: 'CloudinaryImages',
+	},
 
 	getInitialState () {
 		var thumbnails = [];
@@ -134,7 +155,7 @@ module.exports = Field.create({
 	},
 
 	fileFieldNode () {
-		return ReactDOM.findDOMNode(this.refs.fileField);
+		return this.refs.fileField;
 	},
 
 	getCount (key) {
@@ -150,7 +171,7 @@ module.exports = Field.create({
 	renderFileField () {
 		if (!this.shouldRenderField()) return null;
 
-		return <input ref="fileField" type="file" name={this.props.paths.upload} multiple className="field-upload" onChange={this.uploadFile} tabIndex="-1" />;
+		return <input ref="fileField" type="file" name={this.getInputName(this.props.paths.upload)} multiple className="field-upload" onChange={this.uploadFile} tabIndex="-1" />;
 	},
 
 	clearFiles () {
@@ -264,13 +285,13 @@ module.exports = Field.create({
 		});
 		if (remove.length) value = 'remove:' + remove.join(',');
 
-		return <input ref="action" className="field-action" type="hidden" value={value} name={this.props.paths.action} />;
+		return <input ref="action" className="field-action" type="hidden" value={value} name={this.getInputName(this.props.paths.action)} />;
 	},
 
 	renderUploadsField () {
 		if (!this.shouldRenderField()) return null;
 
-		return <input ref="uploads" className="field-uploads" type="hidden" name={this.props.paths.uploads} />;
+		return <input ref="uploads" className="field-uploads" type="hidden" name={this.getInputName(this.props.paths.uploads)} />;
 	},
 
 	renderNote () {
@@ -279,7 +300,7 @@ module.exports = Field.create({
 
 	renderUI () {
 		return (
-			<FormField label={this.props.label} className="field-type-cloudinaryimages">
+			<FormField label={this.props.label} className="field-type-cloudinaryimages" htmlFor={this.props.path}>
 				{this.renderFieldAction()}
 				{this.renderUploadsField()}
 				{this.renderFileField()}

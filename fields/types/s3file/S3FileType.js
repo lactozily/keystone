@@ -1,3 +1,10 @@
+/**
+Deprecated.
+
+This FieldType will be removed shortly in favour of the new generic File type,
+in conjunction with the S3 storage adapter.
+*/
+
 var _ = require('lodash');
 var assign = require('object-assign');
 var FieldType = require('../Type');
@@ -7,12 +14,21 @@ var moment = require('moment');
 var util = require('util');
 var utils = require('keystone-utils');
 
+var loggedWarning = false;
+
 /**
  * S3File FieldType Constructor
  * @extends Field
  * @api public
  */
 function s3file (list, path, options) {
+
+	if (!loggedWarning) {
+		loggedWarning = true;
+		console.warn('The S3FileType field type has been deprecated and will be removed '
+			+ 'very soon. Please see https://github.com/keystonejs/keystone/issues/3228');
+	}
+
 	grappling.mixin(this).allowHooks('pre:upload');
 
 	this._underscoreMethods = ['format', 'uploadFile'];
@@ -42,6 +58,7 @@ function s3file (list, path, options) {
 	}
 
 }
+s3file.properName = 'S3File';
 util.inherits(s3file, FieldType);
 
 /**
@@ -56,11 +73,10 @@ Object.defineProperty(s3file.prototype, 's3config', {
 /**
  * Registers the field on the List's Mongoose Schema.
  */
-s3file.prototype.addToSchema = function () {
+s3file.prototype.addToSchema = function (schema) {
 
 	var knox = require('knox');
 	var field = this;
-	var schema = this.list.schema;
 
 	var paths = this.paths = {
 		// fields
@@ -338,7 +354,7 @@ s3file.prototype.uploadFile = function (item, file, update, callback) {
 		update = false;
 	}
 
-	if (field.options.allowedTypes && !_.contains(field.options.allowedTypes, filetype)) {
+	if (field.options.allowedTypes && field.options.allowedTypes.indexOf(filetype) === -1) {
 		return callback(new Error('Unsupported File Type: ' + filetype));
 	}
 

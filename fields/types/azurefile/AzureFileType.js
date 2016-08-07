@@ -1,3 +1,10 @@
+/**
+Deprecated.
+
+This FieldType will be removed shortly in favour of the new generic File type,
+in conjunction with the Azure storage adapter.
+*/
+
 var _ = require('lodash');
 var FieldType = require('../Type');
 var grappling = require('grappling-hook');
@@ -5,12 +12,21 @@ var keystone = require('../../../');
 var util = require('util');
 var utils = require('keystone-utils');
 
+var loggedWarning = false;
+
 /**
  * AzureFile FieldType Constructor
  * @extends Field
  * @api public
  */
 function azurefile (list, path, options) {
+
+	if (!loggedWarning) {
+		loggedWarning = true;
+		console.warn('The AzureFile field type has been deprecated and will be removed '
+			+ 'very soon. Please see https://github.com/keystonejs/keystone/issues/3228');
+	}
+
 	grappling.mixin(this).allowHooks('pre:upload');
 
 	this._underscoreMethods = ['format', 'uploadFile'];
@@ -49,6 +65,7 @@ function azurefile (list, path, options) {
 	}
 
 }
+azurefile.properName = 'AzureFile';
 util.inherits(azurefile, FieldType);
 
 /**
@@ -63,12 +80,11 @@ Object.defineProperty(azurefile.prototype, 'azurefileconfig', {
 /**
  * Registers the field on the List's Mongoose Schema.
  */
-azurefile.prototype.addToSchema = function () {
+azurefile.prototype.addToSchema = function (schema) {
 
-	var azure = require('azure');
+	var azure = require('azure-storage');
 
 	var field = this;
-	var schema = this.list.schema;
 
 	var paths = this.paths = {
 		// fields
@@ -193,7 +209,7 @@ azurefile.prototype.updateItem = function (item, data, callback) {
  */
 azurefile.prototype.uploadFile = function (item, file, update, callback) {
 
-	var azure = require('azure');
+	var azure = require('azure-storage');
 
 	var field = this;
 	var filetype = file.mimetype || file.type;
